@@ -1,0 +1,64 @@
+{
+  "PaintScript": "Alpha 0.1.0",
+  "Permissions": {
+    "FileSystem": false,
+    "Networking": false
+  },
+  "StageSize": {
+    "width": 640,
+    "height": 450
+  },
+  "Targets": [
+    {
+      "name": "Sprite 1",
+      "instance-name": "Sprite_1",
+      "isVisible": false,
+      "x": 0,
+      "y": 0,
+      "direction": 90,
+      "size": 0
+    }
+  ],
+  "Code": [
+    {
+      "target": "Sprite_1",
+      "code": {
+        "event handlers": {
+          "Start": [
+            [
+              {
+                "can_op": true,
+                "op": "fn_call",
+                "value": "say|*",
+                "args": [
+                  "#System.Sprite.Say",
+                  {
+                    "Operatable": "0xdd2343",
+                    "ret_type":  "string"
+                  }
+                ],
+                "code": {
+                  "hook": "0xdd2343",
+                  "code": [
+                    {
+                      "can_op": true,
+                      "op": "fn_call",
+                      "value": "AddSmile"
+                    }
+                  ]
+                }
+              },
+              {
+                "can_op": true,
+                "op": "event_call",
+                "value": "@refresh",
+                "args": [ "#System.Diplay.refresh" ],
+                "code": null
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}
