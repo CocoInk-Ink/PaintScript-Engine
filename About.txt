@@ -1,0 +1,150 @@
+I'm restarting this kinda, a few notes for the future:
+
+- PaintScript only for now.
+
+I made a new empty console project, we will make the PaintScript Engine here instead of directly in the VM.
+
+So we are restarting. 
+
+Here is a basic script:
+
+#PaintScript Alpha 0.1
+#Sprite Sprite_1
+
+@Start {
+	var message:String = "Hello, World!";
+	say(AddSmile(message));
+}
+
+function AddSmile(test) {
+	return test + " :)";
+}
+
+This get's compiled to json, then it get's linked, the linker links all the output json together making the final json program that the engine runs. Example final program:
+
+{
+  "PaintScript": "Alpha 0.1.0",
+  "Permissions": {
+    "FileSystem": false,
+    "Networking": false
+  },
+  "StageSize": {
+    "width": 640,
+    "height": 450
+  },
+  "Targets": [
+    {
+      "name": "Sprite 1",
+      "instance-name": "Sprite_1",
+      "isVisible": false,
+      "x": 0,
+      "y": 0,
+      "direction": 90,
+      "size": 0
+    }
+  ],
+  "global-variables": null,
+  "global-functions": null,
+  "Code": [
+    {
+      "target": "Sprite_1",
+      "code": {
+        "event handlers": {
+          "Start": [
+            [
+              {
+                "callable": false,
+                "call": null,
+                "op": "var",
+                "type": "#System.Types.Variable.Local",
+                "value": {
+                  "type": "#System.Types.String",
+                  "value": "Hello, World!"
+                },
+                "name": { "value":  "message", "pointer":  "0x8747r" }
+              },
+              {
+                "callable": false,
+                "call": null,
+                "op": "fn_call",
+                "value": {
+                  "type": "#System.Types.Function",
+                  "value": "say",
+                  "callable": true,
+                  "call": true
+                },
+                "args": [
+                  "#System.Sprite.Say",
+                  [
+                    {
+                      "type": "#System.Types.Function",
+                      "value": "$Sprite_1.AddSmile",
+                      "callable": true,
+                      "call": true,
+                      "args": [
+                        {
+                          "type": "#System.Types.String",
+                          "value": "!var{0x8747r}",
+                          "callable": false,
+                          "call": false,
+                          "args": []
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              },
+              {
+                "callable": false,
+                "op": "event_call",
+                "value": "@refresh",
+                "args": [
+                  "#System.Diplay.refresh"
+                ],
+                "code": null
+              }
+            ]
+          ],
+          "Receive": [
+            []
+          ]
+        },
+        "public-functions": [
+          {
+            "type": "*",
+            "name": "AddSmile",
+            "params": [
+              {
+                "type": "*",
+                "name": "text"
+              }
+            ],
+            "code": [
+              {
+                "op": "return",
+                "value": {
+                  "op": "expression",
+                  "value": [
+                    {
+                      "op": "add",
+                      "value": null,
+                      "args": [
+                        {
+                          "value": "!param{name}"
+                        },
+                        {
+                          "value": " :)"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "public-variables": null
+      }
+    }
+  ]
+}

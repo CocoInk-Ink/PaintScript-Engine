@@ -1,0 +1,7 @@
+#PaintScript Alpha 0.1
+#Sprite Sprite_1
+
+@Start {
+	say("Hello World! :)");
+	call @refresh;
+}
