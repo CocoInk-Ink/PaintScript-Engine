@@ -1,0 +1,116 @@
+{
+  "version": "0.1.0",
+  "permissions": {
+	"filesystem": false,
+	"networking": false
+  },
+  "globals": {
+    "variables": {
+      "h": {
+        "name": "h",
+        "type": "*",
+        "value": { "type": "*", "value": null },
+        "isPublic": true,
+        "isPrivate": false
+      }
+    },
+    "functions": {}
+  },
+  "targets": [
+    {
+      "name": "Sprite_1",
+      "instance": "Sprite_1",
+      "variables": {
+        "name": {
+          "name": "name",
+          "type": "String",
+          "value": { "type": "String", "value": null },
+          "isPublic": false,
+          "isPrivate": true
+        },
+        "age": {
+          "name": "age",
+          "type": "int",
+          "value": { "type": "int", "value": null },
+          "isPublic": true,
+          "isPrivate": false
+        }
+      },
+      "functions": {
+        "refresh": {
+          "name": "refresh",
+          "strict": false,
+          "parameters": [],
+          "returnType": "*",
+          "code": [],
+          "isPublic": true,
+          "isPrivate": false
+        }
+      },
+      "events": {
+        "@start": [
+          {
+            "message": null,
+            "code": [
+              {
+                "op": "broadcast",
+                "fields": { "message": "Message1" }
+              },
+              {
+                "op": "call",
+                "fields": {
+                  "name": {
+                    "kind": "member",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "Sprite_1" },
+                      { "kind": "literal", "type": "String", "value": "say" }
+                    ]
+                  },
+                  "args": [
+                    { "kind": "literal", "type": "String", "value": "Hi!" }
+                  ]
+                }
+              },
+              {
+                "op": "call",
+                "fields": {
+                  "name": "refresh",
+                  "args": []
+                }
+              }
+            ]
+          }
+        ],
+        "@receive": [
+          {
+            "message": "Message1",
+            "code": [
+              {
+                "op": "call",
+                "fields": {
+                  "name": {
+                    "kind": "member",
+                    "args": [
+                      { "kind": "literal", "type": "String", "value": "Sprite_1" },
+                      { "kind": "literal", "type": "String", "value": "say" }
+                    ]
+                  },
+                  "args": [
+                    { "kind": "literal", "type": "String", "value": "Hello, World! :)" }
+                  ]
+                }
+              },
+              {
+                "op": "call",
+                "fields": {
+                  "name": "refresh",
+                  "args": []
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

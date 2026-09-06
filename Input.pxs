@@ -8,7 +8,7 @@ global var h;
 @Start {
 	Broadcast Message1;
 	say("Hi!"); // won't see, the message handler will override it.
-	@call refresh;
+	call @refresh;
 }
 
 @receive Message1 {

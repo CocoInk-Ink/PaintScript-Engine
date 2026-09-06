@@ -1,0 +1,36 @@
+/*
+	PaintScript is a event based language, each event handler is a thread that
+	runs on it's own. There are no custom events, at least not directly.
+	The '@' is what determines an event from a variable/function.
+*/
+
+// A Start handler
+@Start {}
+
+// Another start handler (runs async)
+@Start {}
+
+// Some events have params
+@Keyup(key) {}
+
+// You can target certain events with certain params
+
+@Keydown WKey, UpArrowKey, SpaceKey {}
+
+/*
+	Although PaintScript does not have custom events, it has messages like Scratch.
+*/
+
+// Any message received
+@receive {}
+
+// Specific message received
+@receive Message1 {}
+
+// Specific messages received
+@receive Message1, Message2 {}
+
+// In PaintScript messages don't have params, and are not defined, only handled.
+
+Broadcast Message1; // Activate all threads with handler.
+BroadcastAndWait Message2; // Activate all threads with handler and sleep this thread until all handlers are finished.
