@@ -15,6 +15,7 @@ public class PaintScriptEngine_Alpha_0_1_0
         public string Version { get; set; } = "";
         public List<PSTarget> Targets { get; set; } = new();
         public Dictionary<string, PSGlobalVariable> Globals { get; set; } = new();
+        public Dictionary<string, PSFunction> GlobalFunctions { get; set; } = new();
     }
 
     public sealed class PSTarget
@@ -41,6 +42,7 @@ public class PaintScriptEngine_Alpha_0_1_0
         public string Type { get; set; } = "*";
         public PSValue Value { get; set; } = new();
         public bool IsPublic { get; set; }
+        public bool IsPrivate { get; set; }
     }
 
     public sealed class PSGlobalVariable : PSVariable { }
@@ -58,6 +60,8 @@ public class PaintScriptEngine_Alpha_0_1_0
         public List<PSParameter> Parameters { get; set; } = new();
         public string ReturnType { get; set; } = "*";
         public List<PSInstruction> Code { get; set; } = new();
+        public bool IsPublic { get; set; }
+        public bool IsPrivate { get; set; }
     }
 
     public sealed class PSInstruction
@@ -72,7 +76,7 @@ public class PaintScriptEngine_Alpha_0_1_0
 
     public sealed class PSValueExpr
     {
-        public string Kind { get; set; } = ""; // "literal", "variable", "expression", "call"
+        public string Kind { get; set; } = ""; // "literal", "variable", "expression", "call", "function_ref", "member"
         public string Type { get; set; } = "*";
         public object? Value { get; set; } // for literal, variable name, function name, etc.
         public string Op { get; set; } = ""; // for expression: "+", "==", "&&", etc.
@@ -239,6 +243,34 @@ public class PaintScriptEngine_Alpha_0_1_0
         // =========================
         // Core exec helpers
         // =========================
+        private void AssignMember(PaintScriptThread thread, PSValueExpr expr, object? value)
+        {
+            var targetExpr = expr.Args[0];
+            var memberExpr = expr.Args[1];
+
+            var targetName = (string?)EvaluateValue(thread, targetExpr);
+            var memberName = (string?)EvaluateValue(thread, memberExpr);
+
+            var target = Program.Targets.Find(t =>
+                t.Instance == targetName || t.Name == targetName);
+
+            if (target == null)
+                return;
+
+            // Sprite variable
+            if (target.Variables.TryGetValue(memberName, out var spriteVar))
+            {
+                spriteVar.Value.Value = value;
+                return;
+            }
+
+            // Global variable
+            if (targetName == "root" && Program.Globals.TryGetValue(memberName, out var globalVar))
+            {
+                globalVar.Value.Value = value;
+                return;
+            }
+        }
 
         private void ExecVar(PaintScriptThread thread, PSInstruction instr)
         {
@@ -255,6 +287,12 @@ public class PaintScriptEngine_Alpha_0_1_0
             var name = (string)instr.Fields["target"]!;
             var valueExpr = (PSValueExpr)instr.Fields["value"]!;
             var value = EvaluateValue(thread, valueExpr);
+
+            if (instr.Fields["target"] is PSValueExpr memberExpr && memberExpr.Kind == "member")
+            {
+                AssignMember(thread, memberExpr, value);
+                return;
+            }
 
             // 1. Local
             if (thread.Locals.TryGetValue(name, out var local))
@@ -307,15 +345,36 @@ public class PaintScriptEngine_Alpha_0_1_0
 
         private void ExecCall(PaintScriptThread thread, PSInstruction instr)
         {
-            var fnName = (string)instr.Fields["name"]!;
-            var argsExprs = (List<PSValueExpr>)instr.Fields["args"]!;
+            var fnNameOrExpr = instr.Fields["name"]!;
+            PSFunction? fn = null;
 
-            var target = thread.Target;
-            if (!target.Functions.TryGetValue(fnName, out var fn))
+
+            // Case 1: direct function name
+            if (fnNameOrExpr is string fnName)
+            {
+                fn = ResolveFunction(thread, fnName);
+            }
+            // Case 2: function reference expression
+            else if (fnNameOrExpr is PSValueExpr fnExpr)
+            {
+                var value = EvaluateValue(thread, fnExpr);
+                fn = value as PSFunction;
+            }
+            // Case 3: function is a member
+            else if (fnNameOrExpr is PSValueExpr fnExpr2 && fnExpr2.Kind == "member")
+            {
+                var value = ResolveMember(thread, fnExpr2);
+                fn = value as PSFunction;
+            }
+
+
+            if (fn == null)
                 return; // or throw
 
-            var newThread = new PaintScriptThread(target, fn.Code);
-            // simple parameter binding
+            var argsExprs = (List<PSValueExpr>)instr.Fields["args"]!;
+            var newThread = new PaintScriptThread(thread.Target, fn.Code);
+
+            // Bind parameters
             for (int i = 0; i < fn.Parameters.Count && i < argsExprs.Count; i++)
             {
                 var p = fn.Parameters[i];
@@ -445,7 +504,13 @@ public class PaintScriptEngine_Alpha_0_1_0
                 case "variable":
                     {
                         var name = (string)expr.Value!;
-                        return ResolveVariable(thread, name);
+                        var val = ResolveVariable(thread, name);
+
+                        // If the variable holds a function name, resolve it
+                        if (val is string fnName && thread.Target.Functions.ContainsKey(fnName))
+                            return thread.Target.Functions[fnName];
+
+                        return val;
                     }
 
                 case "expression":
@@ -454,6 +519,15 @@ public class PaintScriptEngine_Alpha_0_1_0
                 case "call":
                     // simple: only support built-ins like say() here
                     return null;
+
+                case "function_ref":
+                    {
+                        var fnName = (string)expr.Value!;
+                        return ResolveFunction(thread, fnName);
+                    }
+
+                case "member":
+                    return ResolveMember(thread, expr);
 
                 default:
                     return null;
@@ -506,5 +580,69 @@ public class PaintScriptEngine_Alpha_0_1_0
             return null;
         }
 
+        private PSFunction? ResolveFunction(PaintScriptThread thread, string name)
+        {
+            // 1. Local variable holding a function
+            if (thread.Locals.TryGetValue(name, out var local))
+                if (local.Value is PSFunction fLocal)
+                    return fLocal;
+
+            // 2. Sprite variable holding a function
+            if (thread.Target.Variables.TryGetValue(name, out var spriteVar))
+                if (spriteVar.Value.Value is PSFunction fSprite)
+                    return fSprite;
+
+            // 3. Global variable holding a function
+            if (Program.Globals.TryGetValue(name, out var globalVar))
+                if (globalVar.Value.Value is PSFunction fGlobal)
+                    return fGlobal;
+
+            // 4. Sprite-level declared function
+            if (thread.Target.Functions.TryGetValue(name, out var spriteFn))
+                return spriteFn;
+
+            // 5. Global functions
+            if (Program.GlobalFunctions.TryGetValue(name, out var globalFn))
+                return globalFn;
+
+            return null;
+        }
+
+        private object? ResolveMember(PaintScriptThread thread, PSValueExpr expr)
+        {
+            var targetExpr = expr.Args[0];
+            var memberExpr = expr.Args[1];
+
+            var targetName = (string?)EvaluateValue(thread, targetExpr);
+            var memberName = (string?)EvaluateValue(thread, memberExpr);
+
+            if (targetName == null || memberName == null)
+                return null;
+
+            // Find target by name or instance
+            var target = Program.Targets.Find(t =>
+                t.Instance == targetName || t.Name == targetName);
+
+            if (target == null)
+                return null;
+
+            // 1. Sprite variable
+            if (target.Variables.TryGetValue(memberName, out var spriteVar))
+                return spriteVar.Value.Value;
+
+            // 2. Sprite function
+            if (target.Functions.TryGetValue(memberName, out var spriteFn))
+                return spriteFn;
+
+            // 3. Global variable (only if targetName == "root")
+            if (targetName == "root" && Program.Globals.TryGetValue(memberName, out var globalVar))
+                return globalVar.Value.Value;
+
+            // 4. Global function
+            if (targetName == "root" && Program.GlobalFunctions.TryGetValue(memberName, out var globalFn))
+                return globalFn;
+
+            return null;
+        }
     }
 }

@@ -1,0 +1,17 @@
+#PaintScript Alpha 0.1.0
+#Sprite Sprite_1
+
+private var name:String;
+public var age:int;
+global var h;
+
+@Start {
+	Broadcast Message1;
+	say("Hi!"); // won't see, the message handler will override it.
+	@call refresh;
+}
+
+@receive Message1 {
+	this.say("Hello, World! :)");
+	call @refresh;
+}
