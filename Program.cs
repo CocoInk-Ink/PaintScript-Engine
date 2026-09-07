@@ -34,7 +34,7 @@ namespace PaintScript_Engine
             // Start @start event on all targets
             foreach (var target in program.Targets)
             {
-                engine.StartEvent(target, "@Start");
+                engine.StartEvent(target, "Start");
             }
 
             // Tick loop
