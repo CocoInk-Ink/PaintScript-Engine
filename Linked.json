@@ -15,46 +15,43 @@
             "variables": {},
             "functions": {},
             "events": {
-                "Start": [
-                    {
-                        "message": null,
-                        "code": [
-                            {
-                                "op": "call",
-                                "fields": {
-                                    "name": {
-                                        "kind": "member",
-                                        "args": [
-                                            {
-                                                "kind": "literal",
-                                                "type": "String",
-                                                "value": "Sprite_1"
-                                            },
-                                            {
-                                                "kind": "literal",
-                                                "type": "String",
-                                                "value": "say"
-                                            }
-                                        ]
-                                    },
+                "@Start": [
+                    [
+                        {
+                            "op": "call",
+                            "fields": {
+                                "name": {
+                                    "kind": "member",
                                     "args": [
                                         {
                                             "kind": "literal",
                                             "type": "String",
-                                            "value": "Hello, World! :)"
+                                            "value": "Sprite_1"
+                                        },
+                                        {
+                                            "kind": "literal",
+                                            "type": "String",
+                                            "value": "say"
                                         }
                                     ]
-                                }
-                            },
-                            {
-                                "op": "event_call",
-                                "fields": {
-                                    "name": "refresh",
-                                    "args": []
-                                }
+                                },
+                                "args": [
+                                    {
+                                        "kind": "literal",
+                                        "type": "String",
+                                        "value": "Hello, World! :)"
+                                    }
+                                ]
                             }
-                        ]
-                    }
+                        },
+                        {
+                            "op": "event_call",
+                            "fields": {
+                                "name": "refresh",
+                                "args": []
+                            }
+                        }
+                    ]
                 ]
             }
         }
