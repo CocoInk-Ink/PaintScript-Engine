@@ -1,0 +1,62 @@
+{
+    "version": "0.1",
+    "permissions": {
+        "filesystem": false,
+        "networking": false
+    },
+    "globals": {
+        "variables": {},
+        "functions": {}
+    },
+    "targets": [
+        {
+            "name": "Sprite 1",
+            "instance": "Sprite_1",
+            "variables": {},
+            "functions": {},
+            "events": {
+                "Start": [
+                    {
+                        "message": null,
+                        "code": [
+                            {
+                                "op": "call",
+                                "fields": {
+                                    "name": {
+                                        "kind": "member",
+                                        "args": [
+                                            {
+                                                "kind": "literal",
+                                                "type": "String",
+                                                "value": "Sprite_1"
+                                            },
+                                            {
+                                                "kind": "literal",
+                                                "type": "String",
+                                                "value": "say"
+                                            }
+                                        ]
+                                    },
+                                    "args": [
+                                        {
+                                            "kind": "literal",
+                                            "type": "String",
+                                            "value": "Hello, World! :)"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "op": "event_call",
+                                "fields": {
+                                    "name": "refresh",
+                                    "args": []
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

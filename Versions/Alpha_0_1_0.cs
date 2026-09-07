@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace PaintScript_Engine.Versions;
@@ -81,6 +82,41 @@ public class PaintScriptEngine_Alpha_0_1_0
         public object? Value { get; set; } // for literal, variable name, function name, etc.
         public string Op { get; set; } = ""; // for expression: "+", "==", "&&", etc.
         public List<PSValueExpr> Args { get; set; } = new(); // expression args or call args
+
+        public static PSValueExpr FromJson(JsonElement je)
+        {
+            var kind = je.GetProperty("kind").GetString()!;
+            var expr = new PSValueExpr { Kind = kind };
+
+            if (je.TryGetProperty("value", out var val))
+            {
+                expr.Value = val.ValueKind switch
+                {
+                    JsonValueKind.String => val.GetString(),
+                    JsonValueKind.Number => val.GetDouble(),
+                    JsonValueKind.True => true,
+                    JsonValueKind.False => false,
+                    _ => null
+                };
+            }
+
+            if (je.TryGetProperty("args", out var args))
+            {
+                expr.Args = args.EnumerateArray()
+                                .Select(a => FromJson(a))
+                                .ToList();
+            }
+
+            return expr;
+        }
+
+        public static List<PSValueExpr> ListFromJson(JsonElement je)
+        {
+            var list = new List<PSValueExpr>();
+            foreach (var item in je.EnumerateArray())
+                list.Add(PSValueExpr.FromJson(item));
+            return list;
+        }
     }
 
     // =========================
@@ -336,45 +372,37 @@ public class PaintScriptEngine_Alpha_0_1_0
             thread.WakeAt = null; // ensure it's not treated as a timed wait
         }
 
+
         private void ExecEventCall(PaintScriptThread thread, PSInstruction instr)
         {
-            var name = (string)instr.Fields["name"]!;
+            var rawName = instr.Fields["name"];
+
+            string name;
+
+            // event_call always uses a string
+            if (rawName is string s)
+            {
+                name = s;
+            }
+            else if (rawName is JsonElement je && je.ValueKind == JsonValueKind.String)
+            {
+                name = je.GetString()!;
+            }
+            else
+            {
+                throw new Exception("event_call name must be a string");
+            }
+
+            Console.WriteLine($"{name} has been called!");
+
             var target = thread.Target;
             StartEvent(target, name.TrimStart('@'));
         }
 
-        private void ExecCall(PaintScriptThread thread, PSInstruction instr)
+        private void CallFunction(PaintScriptThread thread, PSFunction fn, List<PSValueExpr> argsExprs)
         {
-            var fnNameOrExpr = instr.Fields["name"]!;
-            PSFunction? fn = null;
-
-
-            // Case 1: direct function name
-            if (fnNameOrExpr is string fnName)
-            {
-                fn = ResolveFunction(thread, fnName);
-            }
-            // Case 2: function reference expression
-            else if (fnNameOrExpr is PSValueExpr fnExpr)
-            {
-                var value = EvaluateValue(thread, fnExpr);
-                fn = value as PSFunction;
-            }
-            // Case 3: function is a member
-            else if (fnNameOrExpr is PSValueExpr fnExpr2 && fnExpr2.Kind == "member")
-            {
-                var value = ResolveMember(thread, fnExpr2);
-                fn = value as PSFunction;
-            }
-
-
-            if (fn == null)
-                return; // or throw
-
-            var argsExprs = (List<PSValueExpr>)instr.Fields["args"]!;
             var newThread = new PaintScriptThread(thread.Target, fn.Code);
 
-            // Bind parameters
             for (int i = 0; i < fn.Parameters.Count && i < argsExprs.Count; i++)
             {
                 var p = fn.Parameters[i];
@@ -383,6 +411,72 @@ public class PaintScriptEngine_Alpha_0_1_0
             }
 
             Threads.Add(newThread);
+        }
+
+        private void ExecCall(PaintScriptThread thread, PSInstruction instr)
+        {
+            var fnNameOrExpr = instr.Fields["name"]!;
+            var rawArgs = instr.Fields["args"]!;
+            List<PSValueExpr> args;
+
+            // Convert JsonElement args -> List<PSValueExpr>
+            if (rawArgs is JsonElement jeArgs)
+                args = PSValueExpr.ListFromJson(jeArgs);
+            else
+                args = (List<PSValueExpr>)rawArgs;
+
+            // Convert JsonElement name -> PSValueExpr if needed
+            if (fnNameOrExpr is JsonElement jeName)
+                fnNameOrExpr = PSValueExpr.FromJson(jeName);
+
+            // Case 1: direct string name
+            if (fnNameOrExpr is string fnName)
+            {
+                // Built-in: say()
+                if (fnName == "say")
+                {
+                    var text = EvaluateValue(thread, args[0])?.ToString() ?? "";
+                    Console.WriteLine($"[{thread.Target.Instance}] {text}");
+                    return;
+                }
+
+                // Normal function
+                var fn = ResolveFunction(thread, fnName);
+                if (fn != null)
+                    CallFunction(thread, fn, args);
+                return;
+            }
+
+            // Case 2: member call (Sprite_1.say)
+            if (fnNameOrExpr is PSValueExpr expr && expr.Kind == "member")
+            {
+                // Evaluate member: ["Sprite_1", "say"]
+                var instanceName = EvaluateValue(thread, expr.Args[0])?.ToString();
+                var methodName = EvaluateValue(thread, expr.Args[1])?.ToString();
+
+                // Built-in: say()
+                if (methodName == "say")
+                {
+                    var text = EvaluateValue(thread, args[0])?.ToString() ?? "";
+                    Console.WriteLine($"[{thread.Target.Instance}] {text}");
+                    return;
+                }
+
+                // Normal member function
+                var fn = ResolveMember(thread, expr) as PSFunction;
+                if (fn != null)
+                    CallFunction(thread, fn, args);
+                return;
+            }
+
+            // Case 3: expression that resolves to a function
+            if (fnNameOrExpr is PSValueExpr expr2)
+            {
+                var value = EvaluateValue(thread, expr2);
+                var fn = value as PSFunction;
+                if (fn != null)
+                    CallFunction(thread, fn, args);
+            }
         }
 
         private void ExecIf(PaintScriptThread thread, PSInstruction instr)
