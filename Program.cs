@@ -30,8 +30,14 @@ namespace PaintScript_Engine
             }
 
             var engine = new PaintScriptEngine_Alpha_0_1_0.PaintScriptEngine(program);
-            PaintScriptEngine_Alpha_0_1_1.StartTargetEvents(engine, program);
 
+            // Start @start event on all targets
+            foreach (var target in program.Targets)
+            {
+                engine.StartEvent(target, "Start");
+            }
+
+            // Tick loop
             Console.WriteLine("Running PaintScript program...");
             while (true)
             {
