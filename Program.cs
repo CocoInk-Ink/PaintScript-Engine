@@ -10,18 +10,17 @@ namespace PaintScript_Engine
     {
         public static async Task Main(string[] args)
         {
-            string jsonPath = args.Length > 0 ? args[0] : "program.json";
-            if (!File.Exists(jsonPath) && File.Exists("program1.json"))
-                jsonPath = "program1.json";
+            // Load the JSON IR (replace with your actual file path or JSON string)
+            string json = File.ReadAllText("program.json");
 
-            if (!File.Exists(jsonPath))
-            {
-                Console.WriteLine($"PaintScript program file not found: {jsonPath}");
-                return;
-            }
-
-            string json = File.ReadAllText(jsonPath);
-            var program = PaintScriptEngine_Alpha_0_1_1.LoadProgram(json);
+            // Deserialize into PSProgram
+            var program = JsonSerializer.Deserialize<PaintScriptEngine_Alpha_0_1_0.PSProgram>(
+                json,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }
+            );
 
             if (program == null)
             {
@@ -29,6 +28,7 @@ namespace PaintScript_Engine
                 return;
             }
 
+            // Create the engine
             var engine = new PaintScriptEngine_Alpha_0_1_0.PaintScriptEngine(program);
 
             // Start @start event on all targets
@@ -42,7 +42,7 @@ namespace PaintScript_Engine
             while (true)
             {
                 await engine.TickAsync();
-                await Task.Delay(10);
+                await Task.Delay(10); // small delay to avoid CPU burn
             }
         }
     }

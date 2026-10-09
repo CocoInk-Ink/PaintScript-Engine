@@ -15,7 +15,7 @@
             "variables": {},
             "functions": {},
             "events": {
-                "@Start": [
+                "Start": [
                     [
                         {
                             "op": "call",
